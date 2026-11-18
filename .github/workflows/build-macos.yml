@@ -2,7 +2,7 @@
 #
 # Builds the finished AU (.component), VST3 (.vst3) and Standalone (.app)
 # for BOTH plugins — Silktone Ambient and Silktone Vocal Channel — on a
-# GitHub-hosted Mac (macos-14, Apple Silicon) and uploads them as one zip.
+# GitHub-hosted Mac (macos-15, Apple Silicon) and uploads them as one zip.
 # No Mac, Xcode or Terminal needed on Joel's end.
 #
 # How to use (once this repo is on GitHub):
@@ -34,8 +34,8 @@ on:
 
 jobs:
   build-macos:
-    name: AU + VST3 + Standalone, both plugins (macos-14, arm64)
-    runs-on: macos-14
+    name: AU + VST3 + Standalone, both plugins (macos-15, arm64)
+    runs-on: macos-15
     steps:
       - name: Check out
         uses: actions/checkout@v4
