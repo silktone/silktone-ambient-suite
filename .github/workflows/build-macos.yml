@@ -1,0 +1,104 @@
+# Silktone Ambient Suite — macOS cloud build
+#
+# Builds the finished AU (.component), VST3 (.vst3) and Standalone (.app)
+# for BOTH plugins — Silktone Ambient and Silktone Vocal Channel — on a
+# GitHub-hosted Mac (macos-14, Apple Silicon) and uploads them as one zip.
+# No Mac, Xcode or Terminal needed on Joel's end.
+#
+# How to use (once this repo is on GitHub):
+#   1. Push this project to a GitHub repo.
+#   2. Open the repo's Actions tab -> "Build macOS plugins" -> Run workflow.
+#      (It also runs automatically on every push to main/master.)
+#   3. When the run finishes, download the "silktone-ambient-suite-macos"
+#      artifact (a zip with both plugins in all three formats).
+#   4. Unzip and drop the bundles into the Plug-Ins folders — see README.md.
+#
+# The bundles this workflow produces are UNSIGNED (no Apple Developer ID
+# certificate is available in CI). That is fine for Joel's own Mac: Logic
+# loads an unsigned AU after a one-time right-click -> Open (see README.md).
+# For distribution to anyone else, add Developer ID signing + notarization
+# (needs an Apple Developer account and the signing secrets in the repo).
+#
+# AAX (Pro Tools) is deliberately NOT built here. An unsigned .aaxplugin
+# will not load in retail Pro Tools at all — it needs the Avid AAX SDK
+# plus PACE code signing (Avid developer approval, PACE EDEN tools, an
+# iLok key or PACE Cloud Signing). See the "Pro Tools (AAX)" section in
+# README.md. That is a separate step, not a build flag.
+
+name: Build macOS plugins
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: AU + VST3 + Standalone, both plugins (macos-14, arm64)
+    runs-on: macos-14
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          cmake --version | head -1
+
+      - name: Configure (Xcode generator, Release)
+        run: cmake -S . -B build -G Xcode -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Run the DSP test suite
+        run: ./build/Release/test_dsp
+        # The DSP test renders both demo WAVs and checks every block for
+        # finite, bounded output. It runs against the same sources that
+        # went into the plugins.
+
+      - name: List built bundles
+        run: |
+          find build/SilktoneAmbient_artefacts/Release build/SilktoneVocalChannel_artefacts/Release -maxdepth 2 -print
+          test -d "build/SilktoneAmbient_artefacts/Release/AU/Silktone Ambient.component"
+          test -d "build/SilktoneAmbient_artefacts/Release/VST3/Silktone Ambient.vst3"
+          test -d "build/SilktoneAmbient_artefacts/Release/Standalone/Silktone Ambient.app"
+          test -d "build/SilktoneVocalChannel_artefacts/Release/AU/Silktone Vocal Channel.component"
+          test -d "build/SilktoneVocalChannel_artefacts/Release/VST3/Silktone Vocal Channel.vst3"
+          test -d "build/SilktoneVocalChannel_artefacts/Release/Standalone/Silktone Vocal Channel.app"
+
+      - name: Validate the Audio Units with auval
+        # auval is macOS's own AU validator (what Logic runs). It needs the
+        # bundles in the user Components folder to find them. Both plugins
+        # are aufx effects under manufacturer SgEn.
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "build/SilktoneAmbient_artefacts/Release/AU/Silktone Ambient.component" \
+                ~/Library/Audio/Plug-Ins/Components/
+          cp -R "build/SilktoneVocalChannel_artefacts/Release/AU/Silktone Vocal Channel.component" \
+                ~/Library/Audio/Plug-Ins/Components/
+          auval -v aufx SAmb SgEn
+          auval -v aufx SVch SgEn
+
+      - name: Package everything into one zip
+        if: always()
+        run: |
+          mkdir -p package
+          cp -R "build/SilktoneAmbient_artefacts/Release/AU/Silktone Ambient.component" package/ 2>/dev/null || true
+          cp -R "build/SilktoneAmbient_artefacts/Release/VST3/Silktone Ambient.vst3" package/ 2>/dev/null || true
+          cp -R "build/SilktoneAmbient_artefacts/Release/Standalone/Silktone Ambient.app" package/ 2>/dev/null || true
+          cp -R "build/SilktoneVocalChannel_artefacts/Release/AU/Silktone Vocal Channel.component" package/ 2>/dev/null || true
+          cp -R "build/SilktoneVocalChannel_artefacts/Release/VST3/Silktone Vocal Channel.vst3" package/ 2>/dev/null || true
+          cp -R "build/SilktoneVocalChannel_artefacts/Release/Standalone/Silktone Vocal Channel.app" package/ 2>/dev/null || true
+          cp README.md package/README.txt
+          cp WHERE-TO-PUT-EVERYTHING.txt package/
+          cd package && ditto -c -k --sequesterRsrc --keepParent . ../Silktone-Ambient-Suite-macOS.zip
+
+      - name: Upload finished plugins
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: silktone-ambient-suite-macos
+          path: Silktone-Ambient-Suite-macOS.zip
+          if-no-files-found: error
+          retention-days: 90

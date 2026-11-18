@@ -1,0 +1,11 @@
+# Build outputs — never commit these
+build/
+build-*/
+*.component
+*.vst3
+*.aaxplugin
+*.app
+DerivedData/
+
+# Compiled test binary
+/tests/test_dsp
