@@ -12,6 +12,12 @@ project(SilktoneAmbientSuite VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Minimum macOS for Joel's machine (Monterey 12.7.6). NOTE: this line alone
+# does NOT take effect with the Xcode generator — the workflow MUST also pass
+# -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 on the cmake command line (set before
+# project(), so the Xcode generator uses it as the project-wide default).
+# This line keeps local builds honest.
+set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version")
 
 # JUCE is fetched at configure time (not committed to this repo).
 include(FetchContent)

@@ -46,7 +46,12 @@ jobs:
           cmake --version | head -1
 
       - name: Configure (Xcode generator, Release)
-        run: cmake -S . -B build -G Xcode -DCMAKE_BUILD_TYPE=Release
+        # Deployment target 12.0 = macOS Monterey, Joel's machine (12.7.6).
+        # Must be passed here on the command line: the CMAKE_OSX_DEPLOYMENT_TARGET
+        # set() in CMakeLists.txt is ignored by the Xcode generator, and without
+        # this flag the bundles default to the SDK version (15.5) and refuse to
+        # open on Monterey.
+        run: cmake -S . -B build -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
 
       - name: Build
         run: cmake --build build --config Release --parallel 4
@@ -66,6 +71,24 @@ jobs:
           test -d "build/SilktoneVocalChannel_artefacts/Release/AU/Silktone Vocal Channel.component"
           test -d "build/SilktoneVocalChannel_artefacts/Release/VST3/Silktone Vocal Channel.vst3"
           test -d "build/SilktoneVocalChannel_artefacts/Release/Standalone/Silktone Vocal Channel.app"
+
+      - name: Verify minimum macOS version is 12.0
+        # Fail the run if any binary's LC_BUILD_VERSION minos is not 12.0 —
+        # a silent default back to the SDK version (15.5) must never ship.
+        run: |
+          for bundle in \
+            "build/SilktoneAmbient_artefacts/Release/AU/Silktone Ambient.component" \
+            "build/SilktoneAmbient_artefacts/Release/VST3/Silktone Ambient.vst3" \
+            "build/SilktoneAmbient_artefacts/Release/Standalone/Silktone Ambient.app" \
+            "build/SilktoneVocalChannel_artefacts/Release/AU/Silktone Vocal Channel.component" \
+            "build/SilktoneVocalChannel_artefacts/Release/VST3/Silktone Vocal Channel.vst3" \
+            "build/SilktoneVocalChannel_artefacts/Release/Standalone/Silktone Vocal Channel.app"; do
+            bin=$(find "$bundle/Contents/MacOS" -type f | head -1)
+            echo "== $bin"
+            otool -l "$bin" | grep minos
+            minoses=$(otool -l "$bin" | grep minos | awk '{print $2}' | sort -u)
+            test "$minoses" = "12.0" || { echo "ERROR: minos is '$minoses', expected 12.0"; exit 1; }
+          done
 
       - name: Validate the Audio Units with auval
         # auval is macOS's own AU validator (what Logic runs). It needs the
