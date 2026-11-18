@@ -70,13 +70,19 @@ jobs:
       - name: Validate the Audio Units with auval
         # auval is macOS's own AU validator (what Logic runs). It needs the
         # bundles in the user Components folder to find them. Both plugins
-        # are aufx effects under manufacturer SgEn.
+        # are aufx effects under manufacturer SgEn. The system
+        # AudioComponentRegistrar can hold a stale cache of the Components
+        # folder, so kill it first to force a rescan — otherwise auval
+        # fails with "didn't find the component" even though the bundles
+        # are present and correct.
         run: |
           mkdir -p ~/Library/Audio/Plug-Ins/Components
           cp -R "build/SilktoneAmbient_artefacts/Release/AU/Silktone Ambient.component" \
                 ~/Library/Audio/Plug-Ins/Components/
           cp -R "build/SilktoneVocalChannel_artefacts/Release/AU/Silktone Vocal Channel.component" \
                 ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          sleep 3
           auval -v aufx SAmb SgEn
           auval -v aufx SVch SgEn
 

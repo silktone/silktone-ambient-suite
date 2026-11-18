@@ -81,6 +81,30 @@ void SilktoneVocalChannelProcessor::processBlock(juce::AudioBuffer<float>& buffe
     p.outputDb = getF(kOutput);
     dsp_.setParams(p);
 
+    if (numChannels == 1)
+    {
+        // Mono buffer (auval's 1-channel test, a mono Logic track): the
+        // DSP chain is stereo, so upmix the single channel to stereo
+        // scratch, run the chain, and take the left channel back out.
+        monoInL_.assign((size_t)numSamples, 0.0f);
+        monoInR_.assign((size_t)numSamples, 0.0f);
+        monoOutL_.assign((size_t)numSamples, 0.0f);
+        monoOutR_.assign((size_t)numSamples, 0.0f);
+        const float* src = buffer.getReadPointer(0);
+        for (int i = 0; i < numSamples; ++i)
+        {
+            monoInL_[(size_t)i] = src[i];
+            monoInR_[(size_t)i] = src[i];
+        }
+        float* inPtrs[2] = { monoInL_.data(), monoInR_.data() };
+        float* outPtrs[2] = { monoOutL_.data(), monoOutR_.data() };
+        dsp_.process(inPtrs, outPtrs, numSamples);
+        float* dst = buffer.getWritePointer(0);
+        for (int i = 0; i < numSamples; ++i)
+            dst[i] = monoOutL_[(size_t)i];
+        return;
+    }
+
     std::vector<float*> ptrs((size_t)numChannels);
     for (int ch = 0; ch < numChannels; ++ch)
         ptrs[(size_t)ch] = buffer.getWritePointer(ch);

@@ -60,5 +60,9 @@ private:
 
     silktone::VocalChannelDSP dsp_;
     int currentProgram_ = 0;
+    // Mono support: the DSP chain is stereo. On a mono buffer (auval's
+    // 1-channel test, a mono Logic track) we upmix into these scratch
+    // buffers, run the chain, and take channel 0 back out.
+    std::vector<float> monoInL_, monoInR_, monoOutL_, monoOutR_;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SilktoneVocalChannelProcessor)
 };
