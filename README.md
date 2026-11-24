@@ -154,11 +154,14 @@ subfolders).
 
 ## Pro Tools (AAX)
 
-There is no AAX build for this suite, and adding the format to the
-build would not be enough on its own. An unsigned `.aaxplugin` will
-not load in retail Pro Tools at all — it is silently absent from the
-insert menu. Loading it in a normal Pro Tools needs PACE code signing,
-which is a human approval process, not a build step:
+There IS an unsigned AAX build for this suite now — the cloud build
+produces both `.aaxplugin` bundles (artifact
+`silktone-ambient-suite-aax`). An unsigned `.aaxplugin` will not load
+in retail Pro Tools at all — it is silently absent from the insert
+menu. It loads ONLY in Pro Tools Developer (free, from Avid), which
+is the test step before signing. Loading it in a normal Pro Tools
+needs PACE code signing, which is a human approval process, not a
+build step:
 
 1. A free Avid developer account (developer.avid.com) and the AAX SDK
    licence, plus an iLok account.
@@ -169,8 +172,7 @@ which is a human approval process, not a build step:
    CI). Only a PACE-signed bundle loads in retail Pro Tools.
 
 Until that process is done, the suite runs in Logic (AU), any VST3
-host, and as a Standalone app. The same applies to the drum machine
-plugin — see its `docs/AAX.md` for the full write-up.
+host, as a Standalone app, and in Pro Tools Developer (unsigned AAX).
 
 ## Use
 

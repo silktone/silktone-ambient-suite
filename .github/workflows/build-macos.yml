@@ -1,17 +1,20 @@
 # Silktone Ambient Suite — macOS cloud build
 #
-# Builds the finished AU (.component), VST3 (.vst3) and Standalone (.app)
-# for BOTH plugins — Silktone Ambient and Silktone Vocal Channel — on a
-# GitHub-hosted Mac (macos-26, Apple Silicon) and uploads them as one zip.
-# No Mac, Xcode or Terminal needed on Joel's end.
+# Builds the finished AU (.component), VST3 (.vst3), AAX (.aaxplugin)
+# and Standalone (.app) for BOTH plugins — Silktone Ambient and
+# Silktone Vocal Channel — on a GitHub-hosted Mac (macos-26, Apple
+# Silicon) and uploads them as zips. No Mac, Xcode or Terminal needed
+# on Joel's end.
 #
 # How to use (once this repo is on GitHub):
 #   1. Push this project to a GitHub repo.
 #   2. Open the repo's Actions tab -> "Build macOS plugins" -> Run workflow.
 #      (It also runs automatically on every push to main/master.)
 #   3. When the run finishes, download the "silktone-ambient-suite-macos"
-#      artifact (a zip with both plugins in all three formats).
-#   4. Unzip and drop the bundles into the Plug-Ins folders — see README.md.
+#      artifact (a zip with both plugins in AU/VST3/Standalone) and the
+#      "silktone-ambient-suite-aax" artifact (a zip with both .aaxplugin
+#      bundles). Unzip and drop the bundles into the Plug-Ins folders —
+#      see README.md.
 #
 # The bundles this workflow produces are UNSIGNED (no Apple Developer ID
 # certificate is available in CI). That is fine for Joel's own Mac: Logic
@@ -19,11 +22,13 @@
 # For distribution to anyone else, add Developer ID signing + notarization
 # (needs an Apple Developer account and the signing secrets in the repo).
 #
-# AAX (Pro Tools) is deliberately NOT built here. An unsigned .aaxplugin
-# will not load in retail Pro Tools at all — it needs the Avid AAX SDK
-# plus PACE code signing (Avid developer approval, PACE EDEN tools, an
-# iLok key or PACE Cloud Signing). See the "Pro Tools (AAX)" section in
-# README.md. That is a separate step, not a build flag.
+# The AAX bundles are UNSIGNED too (JUCE 8 vendors the AAX SDK 2.9.0, so
+# no separate SDK download is needed). An unsigned .aaxplugin will NOT
+# load in retail Pro Tools at all — it loads ONLY in Pro Tools Developer
+# (free, from Avid). Retail Pro Tools needs PACE code signing (Avid
+# developer approval, PACE EDEN tools, an iLok key or PACE Cloud
+# Signing). See the "Pro Tools (AAX)" section in README.md. That is a
+# separate step, not a build flag.
 
 name: Build macOS plugins
 
@@ -34,7 +39,7 @@ on:
 
 jobs:
   build-macos:
-    name: AU + VST3 + Standalone, both plugins (macos-26, arm64)
+    name: AU + VST3 + AAX + Standalone, both plugins (macos-26, arm64)
     runs-on: macos-26
     steps:
       - name: Check out
@@ -67,10 +72,16 @@ jobs:
           find build/SilktoneAmbient_artefacts/Release build/SilktoneVocalChannel_artefacts/Release -maxdepth 2 -print
           test -d "build/SilktoneAmbient_artefacts/Release/AU/Silktone Ambient.component"
           test -d "build/SilktoneAmbient_artefacts/Release/VST3/Silktone Ambient.vst3"
+          test -d "build/SilktoneAmbient_artefacts/Release/AAX/Silktone Ambient.aaxplugin"
           test -d "build/SilktoneAmbient_artefacts/Release/Standalone/Silktone Ambient.app"
           test -d "build/SilktoneVocalChannel_artefacts/Release/AU/Silktone Vocal Channel.component"
           test -d "build/SilktoneVocalChannel_artefacts/Release/VST3/Silktone Vocal Channel.vst3"
+          test -d "build/SilktoneVocalChannel_artefacts/Release/AAX/Silktone Vocal Channel.aaxplugin"
           test -d "build/SilktoneVocalChannel_artefacts/Release/Standalone/Silktone Vocal Channel.app"
+          # AAX bundles must contain the plugin binary + the AAX manifest
+          # (PlugInLibrary / Contents). A bare folder with no binary is a fail.
+          test -f "build/SilktoneAmbient_artefacts/Release/AAX/Silktone Ambient.aaxplugin/Contents/MacOS/Silktone Ambient"
+          test -f "build/SilktoneVocalChannel_artefacts/Release/AAX/Silktone Vocal Channel.aaxplugin/Contents/MacOS/Silktone Vocal Channel"
 
       - name: Verify minimum macOS version is 12.0
         # Fail the run if any binary's LC_BUILD_VERSION minos is not 12.0 —
@@ -79,9 +90,11 @@ jobs:
           for bundle in \
             "build/SilktoneAmbient_artefacts/Release/AU/Silktone Ambient.component" \
             "build/SilktoneAmbient_artefacts/Release/VST3/Silktone Ambient.vst3" \
+            "build/SilktoneAmbient_artefacts/Release/AAX/Silktone Ambient.aaxplugin" \
             "build/SilktoneAmbient_artefacts/Release/Standalone/Silktone Ambient.app" \
             "build/SilktoneVocalChannel_artefacts/Release/AU/Silktone Vocal Channel.component" \
             "build/SilktoneVocalChannel_artefacts/Release/VST3/Silktone Vocal Channel.vst3" \
+            "build/SilktoneVocalChannel_artefacts/Release/AAX/Silktone Vocal Channel.aaxplugin" \
             "build/SilktoneVocalChannel_artefacts/Release/Standalone/Silktone Vocal Channel.app"; do
             bin=$(find "$bundle/Contents/MacOS" -type f | head -1)
             echo "== $bin"
@@ -129,5 +142,23 @@ jobs:
         with:
           name: silktone-ambient-suite-macos
           path: Silktone-Ambient-Suite-macOS.zip
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Package AAX bundles into their own zip
+        if: always()
+        run: |
+          mkdir -p package-aax
+          cp -R "build/SilktoneAmbient_artefacts/Release/AAX/Silktone Ambient.aaxplugin" package-aax/ 2>/dev/null || true
+          cp -R "build/SilktoneVocalChannel_artefacts/Release/AAX/Silktone Vocal Channel.aaxplugin" package-aax/ 2>/dev/null || true
+          cp README.md package-aax/README.txt
+          cd package-aax && ditto -c -k --sequesterRsrc --keepParent . ../Silktone-Ambient-Suite-AAX.zip
+
+      - name: Upload AAX plugins
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: silktone-ambient-suite-aax
+          path: Silktone-Ambient-Suite-AAX.zip
           if-no-files-found: error
           retention-days: 90

@@ -1,6 +1,9 @@
-# Silktone Ambient Suite — two macOS plugins (AU / VST3 / Standalone)
+# Silktone Ambient Suite — two macOS plugins (AU / VST3 / AAX / Standalone)
 #   1. Silktone Ambient        — ambient multi-effects (centerpiece)
 #   2. Silktone Vocal Channel  — vocal-first channel strip (EQ / comp / sat)
+# AAX is built UNSIGNED (JUCE 8 vendors the AAX SDK 2.9.0, no separate
+# download needed). Unsigned .aaxplugin loads ONLY in Pro Tools Developer,
+# never in retail Pro Tools — that needs PACE signing (separate step).
 # Build on a Mac (see README.md):
 #   cmake -B build -DCMAKE_BUILD_TYPE=Release
 #   cmake --build build --config Release
@@ -45,7 +48,7 @@ target_include_directories(SilktoneAmbientDSP PUBLIC Shared)
 target_compile_features(SilktoneAmbientDSP PUBLIC cxx_std_17)
 
 # --- Shared plugin setup ---
-function(silktone_add_plugin TARGET_NAME PRODUCT_NAME BUNDLE_ID PLUGIN_CODE DESCRIPTION)
+function(silktone_add_plugin TARGET_NAME PRODUCT_NAME BUNDLE_ID PLUGIN_CODE DESCRIPTION AAX_CATEGORY)
     juce_add_plugin(${TARGET_NAME}
         COMPANY_NAME "Silktone"
         COMPANY_WEBSITE "https://soundsgoodent.example"
@@ -53,7 +56,8 @@ function(silktone_add_plugin TARGET_NAME PRODUCT_NAME BUNDLE_ID PLUGIN_CODE DESC
         BUNDLE_ID ${BUNDLE_ID}
         PLUGIN_MANUFACTURER_CODE SgEn
         PLUGIN_CODE ${PLUGIN_CODE}
-        FORMATS AU VST3 Standalone
+        FORMATS AU VST3 AAX Standalone
+        AAX_CATEGORY ${AAX_CATEGORY}
         PRODUCT_NAME ${PRODUCT_NAME}
         DESCRIPTION ${DESCRIPTION}
         IS_SYNTH FALSE
@@ -85,6 +89,7 @@ silktone_add_plugin(SilktoneAmbient
     "com.soundsgoodent.silktone-ambient"
     SAmb
     "Lexicon / Valhalla-style ambient multi-effects"
+    "AAX_ePlugInCategory_Effect|AAX_ePlugInCategory_Reverb"
 )
 target_sources(SilktoneAmbient PRIVATE
     Ambient/PluginProcessor.cpp
@@ -97,6 +102,7 @@ silktone_add_plugin(SilktoneVocalChannel
     "com.soundsgoodent.silktone-vocal-channel"
     SVch
     "Vocal-first channel strip: EQ, compressor, saturation"
+    "AAX_ePlugInCategory_EQ|AAX_ePlugInCategory_Dynamics"
 )
 target_sources(SilktoneVocalChannel PRIVATE
     VocalChannel/PluginProcessor.cpp
