@@ -67,7 +67,13 @@ function(silktone_add_plugin TARGET_NAME PRODUCT_NAME BUNDLE_ID PLUGIN_CODE DESC
         EDITOR_WANTS_KEYBOARD_FOCUS FALSE
         VST3_CATEGORIES "Fx"
         AU_MAIN_TYPE kAudioUnitType_Effect  # JUCE 8 wants the kAudioUnitType_* name, not the four-char code ("aufx" left JUCE_AU_MAIN_TYPE_CODE unset and the AU build failed)
-        COPY_PLUGIN_AFTER_BUILD TRUE
+        # COPY_PLUGIN_AFTER_BUILD must stay FALSE: for AAX, JUCE copies
+        # the bundle to /Library/Application Support/Avid/Audio/Plug-Ins,
+        # a system folder the CI runner cannot write to (copyDir.cmake
+        # fails with "Maybe need administrative privileges"). The workflow
+        # packages the bundles from the artefacts folder itself, and
+        # installs the AUs for auval by hand — nothing needs the copy.
+        COPY_PLUGIN_AFTER_BUILD FALSE
     )
     juce_generate_juce_header(${TARGET_NAME})
     target_compile_definitions(${TARGET_NAME} PRIVATE
