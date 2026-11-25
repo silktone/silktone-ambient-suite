@@ -95,7 +95,7 @@ silktone_add_plugin(SilktoneAmbient
     "com.soundsgoodent.silktone-ambient"
     SAmb
     "Lexicon / Valhalla-style ambient multi-effects"
-    "AAX_ePlugInCategory_Effect|AAX_ePlugInCategory_Reverb"
+    "AAX_EPlugInCategory_Effect|AAX_ePlugInCategory_Reverb"  # NOTE: "Effect" has a capital E in the AAX SDK enum; the rest use lowercase e
 )
 target_sources(SilktoneAmbient PRIVATE
     Ambient/PluginProcessor.cpp
